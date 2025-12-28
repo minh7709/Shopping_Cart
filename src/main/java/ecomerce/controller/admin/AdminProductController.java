@@ -1,29 +1,37 @@
 package ecomerce.controller.admin;
 
-import ecomerce.entity.Product;
+import ecomerce.dto.ApiResponse;
+import ecomerce.dto.ProductRequest;
+import ecomerce.dto.ProductResponse;
 import ecomerce.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/admin/product")
+@RequestMapping("/api/admin/products")
 public class AdminProductController {
+
     @Autowired
     private ProductService productService;
 
-    @PostMapping("/add")
-    public Product addProduct(@RequestBody Product product) {
-        return productService.addProduct(product);
+    // Thêm sản phẩm mới
+    @PostMapping
+    public ApiResponse<ProductResponse> addProduct(@RequestBody ProductRequest request) {
+        ProductResponse product = productService.addProduct(request);
+        return ApiResponse.success("Product added successfully", product);
     }
 
-    @PutMapping("/update/{id}")
-    public Product updateProduct(@PathVariable Long id, @RequestBody Product product) {
-        return productService.updateProduct(id, product);
+    // Cập nhật sản phẩm
+    @PutMapping("/{id}")
+    public ApiResponse<ProductResponse> updateProduct(@PathVariable Long id, @RequestBody ProductRequest request) {
+        ProductResponse product = productService.updateProduct(id, request);
+        return ApiResponse.success("Product updated successfully", product);
     }
 
-    @DeleteMapping("/delete/{id}")
-    public String deleteProduct(@PathVariable Long id) {
+    // Xóa sản phẩm
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);
-        return "Xóa sản phẩm thành công!";
+        return ApiResponse.success("Product deleted successfully");
     }
 }

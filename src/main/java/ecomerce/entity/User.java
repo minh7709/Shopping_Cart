@@ -1,7 +1,8 @@
 package ecomerce.entity;
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.Generated;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 @Entity
 @Table(name = "users")
@@ -22,4 +23,8 @@ public class User {
 
     @Column(name = "full_name")
     private String fullName;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private Cart cart;
 }
