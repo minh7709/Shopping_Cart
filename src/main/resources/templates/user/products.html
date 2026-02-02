@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Danh sách sản phẩm - Haiku Figure Store</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FCB3B3',
+                        secondary: '#F87171',
+                        'blue-stock': '#3B82F6'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        input[type="checkbox"], input[type="radio"] {
+            accent-color: #FCB3B3;
+            width: 1.2em; height: 1.2em; cursor: pointer;
+        }
+
+        /* Hiệu ứng loading mờ đi khi đang lọc */
+        .htmx-request .animate-fade-in {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+    </style>
+
+    <script>
+        // Logic xử lý nút sắp xếp
+        function setActiveSort(clickedBtn) {
+            document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('bg-primary', 'text-white', 'border-primary'));
+            document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.add('bg-white', 'text-gray-700', 'border-gray-300'));
+
+            clickedBtn.classList.remove('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg-pink-50');
+            clickedBtn.classList.add('bg-primary', 'text-white', 'border-primary', 'hover:bg-primary');
+
+            // Cập nhật giá trị vào hidden input trong form
+            const sortValue = clickedBtn.getAttribute('data-sort');
+            document.getElementById('hiddenSortInput').value = sortValue;
+        }
+
+        // Logic set giá trị cho radio khoảng giá
+        function setPriceRange(min, max) {
+            document.getElementById('minPriceInput').value = min;
+            document.getElementById('maxPriceInput').value = max;
+        }
+        function getUrlParams(paramName) {
+            const params = new URLSearchParams(window.location.search);
+            // getAll trả về mảng các giá trị (VD: brandIds=1&brandIds=2 -> ['1', '2'])
+            return params.getAll(paramName);
+        }
+        function renderCheckboxes(containerId, inputName, data) {
+            const container = document.getElementById(containerId);
+            const currentValues = getUrlParams(inputName); // Lấy các ID đang được chọn trên URL
+
+            let html = '';
+            if (!data || data.length === 0) {
+                html = '<p class="text-xs text-gray-400 p-1">Không có dữ liệu</p>';
+            } else {
+                data.forEach(item => {
+                    // Kiểm tra xem ID này có trong URL không để check
+                    // Lưu ý: item.id là số, currentValues là chuỗi nên cần toString()
+                    const isChecked = currentValues.includes(item.id.toString()) ? 'checked' : '';
+
+                    html += `
+                        <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                            <input type="checkbox" name="${inputName}" value="${item.id}" ${isChecked} />
+                            <span class="text-sm text-gray-600">${item.name}</span>
+                        </label>
+                    `;
+                });
+            }
+            container.innerHTML = html;
+        }
+        async function loadAllFilters() {
+            try {
+                // Gọi song song 4 API cho nhanh
+                const [categories, brands, series, characters] = await Promise.all([
+                    fetch('/api/product-data/categories').then(res => res.json()).then(res => res.data),
+                    fetch('/api/product-data/brands').then(res => res.json()).then(res => res.data),
+                    fetch('/api/product-data/series').then(res => res.json()).then(res => res.data),
+                    fetch('/api/product-data/characters').then(res => res.json()).then(res => res.data)
+                ]);
+
+                // Render ra giao diện
+                renderCheckboxes('categoryListContainer', 'categoryIds', categories);
+                renderCheckboxes('brandListContainer', 'brandIds', brands);
+                renderCheckboxes('seriesListContainer', 'seriesIds', series);
+                renderCheckboxes('characterListContainer', 'characterIds', characters);
+
+            } catch (error) {
+                console.error("Lỗi tải bộ lọc:", error);
+            }
+        }
+        document.addEventListener('DOMContentLoaded', loadAllFilters);
+    </script>
+</head>
+<body class="bg-gray-50 font-sans text-gray-800">
+
+<!-- Include Header Fragment -->
+<div th:replace="~{fragments/header :: header}"></div>
+
+<div class="container mx-auto flex flex-col lg:flex-row gap-8 p-4 mt-6">
+
+    <aside class="w-full lg:w-1/4 h-fit flex-shrink-0">
+
+        <form id="filterForm"
+              hx-get="/products"
+              hx-target="#product-grid-container"
+              hx-swap="innerHTML"
+              hx-push-url="true"
+              class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 sticky top-4">
+
+            <div class="flex justify-between items-center mb-6 border-b pb-3">
+                <h3 class="font-bold text-xl text-gray-800">Bộ lọc</h3>
+                <a href="/products" class="text-xs text-red-500 hover:underline">Xóa hết</a>
+            </div>
+
+            <input type="hidden" name="sort" id="hiddenSortInput"
+                   th:value="${param.sort != null ? param.sort[0] : 'createdAt,desc'}"/>
+
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Từ khóa</label>
+                <div class="flex gap-2">
+                    <input type="text" name="keyword" id="keywordInput" placeholder="Tên nhân vật..."
+                           th:value="${param.keyword}"
+                           class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-primary outline-none transition text-sm"/>
+
+                    <button type="submit" class="bg-primary hover:bg-secondary text-white p-2 rounded-lg transition shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 5.196 5.196Z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <details class="mb-4 group" open>
+                <summary class="font-bold text-gray-700 cursor-pointer flex justify-between items-center mb-2 list-none">
+                    <span>Danh mục</span>
+                    <svg class="w-4 h-4 transition group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <div id="categoryListContainer" class="space-y-2 pl-1">
+                    <p class="text-xs text-gray-400">Đang tải...</p>
+                </div>
+            </details>
+
+            <details class="mb-4 group" open>
+                <summary class="font-bold text-gray-700 cursor-pointer flex justify-between items-center mb-2 list-none">
+                    <span>Thương hiệu</span>
+                    <svg class="w-4 h-4 transition group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <div id="brandListContainer" class="space-y-2 pl-1 max-h-48 overflow-y-auto no-scrollbar">
+                    <p class="text-xs text-gray-400">Đang tải...</p>
+                </div>
+            </details>
+
+            <details class="mb-4 group">
+                <summary class="font-bold text-gray-700 cursor-pointer flex justify-between items-center mb-2 list-none">
+                    <span>Series / Anime</span>
+                    <svg class="w-4 h-4 transition group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <div id="seriesListContainer" class="space-y-2 pl-1 max-h-48 overflow-y-auto no-scrollbar">
+                    <p class="text-xs text-gray-400">Đang tải...</p>
+                </div>
+            </details>
+
+            <details class="mb-4 group">
+                <summary class="font-bold text-gray-700 cursor-pointer flex justify-between items-center mb-2 list-none">
+                    <span>Nhân vật</span>
+                    <svg class="w-4 h-4 transition group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <div id="characterListContainer" class="space-y-2 pl-1 max-h-48 overflow-y-auto no-scrollbar">
+                    <p class="text-xs text-gray-400">Đang tải...</p>
+                </div>
+            </details>
+
+            <details class="mb-4 group" open>
+                <summary class="font-bold text-gray-700 cursor-pointer mb-2">Trạng thái</summary>
+                <div class="space-y-2 pl-1">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" name="inStock" value="true" th:checked="${param.inStock != null}"/>
+                        <span class="text-sm text-gray-600">Còn hàng</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" name="isPreorder" value="true" th:checked="${param.isPreorder != null}"/>
+                        <span class="text-sm text-gray-600">Pre-order</span>
+                    </label>
+                </div>
+            </details>
+
+
+
+            <details class="mb-6 group">
+                <summary class="font-bold text-gray-700 cursor-pointer mb-2">Khoảng giá</summary>
+                <input type="hidden" name="minPrice" id="minPriceInput" th:value="${param.minPrice}"/>
+                <input type="hidden" name="maxPrice" id="maxPriceInput" th:value="${param.maxPrice}"/>
+                <div class="space-y-2 pl-1">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="priceRangeGroup" onclick="setPriceRange('', '')"
+                               th:checked="${param.minPrice == null && param.maxPrice == null}"/>
+                        <span class="text-sm text-gray-600">Tất cả</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="priceRangeGroup" onclick="setPriceRange('0', '500000')"
+                               th:checked="${param.minPrice != null && param.minPrice[0] == '0' && param.maxPrice != null && param.maxPrice[0] == '500000'}"/>
+                        <span class="text-sm text-gray-600">Dưới 500k</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="priceRangeGroup" onclick="setPriceRange('500000', '1000000')"
+                               th:checked="${param.minPrice != null && param.minPrice[0] == '500000' && param.maxPrice != null && param.maxPrice[0] == '1000000'}"/>
+                        <span class="text-sm text-gray-600">500k - 1000k</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="priceRangeGroup" onclick="setPriceRange('1000000', '2000000')"
+                               th:checked="${param.minPrice != null && param.minPrice[0] == '1000000' && param.maxPrice != null && param.maxPrice[0] == '2000000'}"/>
+                        <span class="text-sm text-gray-600">1000k - 2000k</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="priceRangeGroup" onclick="setPriceRange('2000000', '')"
+                               th:checked="${param.minPrice != null && param.minPrice[0] == '2000000' && (param.maxPrice == null || param.maxPrice[0] == '')}"/>
+                        <span class="text-sm text-gray-600">Trên 2000k</span>
+                    </label>
+                </div>
+            </details>
+
+
+            <button type="submit"
+                    class="w-full bg-primary hover:bg-secondary text-white font-bold py-3 rounded-xl shadow-md transition transform active:scale-95 flex justify-center items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
+                </svg>
+                Áp dụng bộ lọc
+            </button>
+        </form>
+    </aside>
+
+    <main class="w-full lg:w-3/4">
+
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center pb-4 border-b gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">Sản phẩm có sẵn</h1>
+                <p class="text-gray-500 text-sm mt-1" th:if="${!products.isEmpty()}">
+                    Hiển thị <span th:text="${products.numberOfElements}"></span> / <span th:text="${products.totalElements}"></span> sản phẩm
+                </p>
+            </div>
+
+            <div class="flex items-center flex-wrap gap-2">
+                <span class="text-gray-600 font-medium mr-2">Sắp xếp:</span>
+
+                <button type="button" data-sort="createdAt,desc" onclick="setActiveSort(this)"
+                        hx-get="/products" hx-include="#filterForm" hx-target="#product-grid-container" hx-push-url="true"
+                        th:class="${param.sort == null || param.sort[0] == 'createdAt,desc'}
+                            ? 'sort-btn active px-4 py-2 text-sm font-medium border rounded-full transition bg-primary text-white border-primary'
+                            : 'sort-btn px-4 py-2 text-sm font-medium border rounded-full transition bg-white text-gray-700 border-gray-300 hover:bg-pink-50'">
+                    Mới nhất
+                </button>
+
+                <button type="button" data-sort="soldQuantity,desc" onclick="setActiveSort(this)"
+                        hx-get="/products" hx-include="#filterForm" hx-target="#product-grid-container" hx-push-url="true"
+                        th:class="${param.sort != null && param.sort[0] == 'soldQuantity,desc'}
+                            ? 'sort-btn active px-4 py-2 text-sm font-medium border rounded-full transition bg-primary text-white border-primary'
+                            : 'sort-btn px-4 py-2 text-sm font-medium border rounded-full transition bg-white text-gray-700 border-gray-300 hover:bg-pink-50'">
+                    Best Seller
+                </button>
+
+                <button type="button" data-sort="price,asc" onclick="setActiveSort(this)"
+                        hx-get="/products" hx-include="#filterForm" hx-target="#product-grid-container" hx-push-url="true"
+                        th:class="${param.sort != null && param.sort[0] == 'price,asc'}
+                            ? 'sort-btn active px-4 py-2 text-sm font-medium border rounded-full transition bg-primary text-white border-primary'
+                            : 'sort-btn px-4 py-2 text-sm font-medium border rounded-full transition bg-white text-gray-700 border-gray-300 hover:bg-pink-50'">
+                    Giá tăng
+                </button>
+                <button type="button" data-sort="price,desc" onclick="setActiveSort(this)"
+                        hx-get="/products" hx-include="#filterForm" hx-target="#product-grid-container" hx-push-url="true"
+                        th:class="${param.sort != null && param.sort[0] == 'price,desc'}
+                            ? 'sort-btn active px-4 py-2 text-sm font-medium border rounded-full transition bg-primary text-white border-primary'
+                            : 'sort-btn px-4 py-2 text-sm font-medium border rounded-full transition bg-white text-gray-700 border-gray-300 hover:bg-pink-50'">
+                    Giá giảm
+                </button>
+            </div>
+        </div>
+
+        <div id="product-grid-container" class="min-h-[300px]">
+
+            <div th:fragment="productListFragment" class="flex flex-col h-full animate-fade-in">
+
+                <div class="htmx-indicator flex justify-center items-center m-2">
+                    <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+
+                <div th:unless="${products.isEmpty()}" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                    <div th:each="product : ${products.content}"
+                         class="group bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-100 flex flex-col">
+
+                        <div class="relative aspect-[3/4] bg-gray-50 overflow-hidden">
+                            <div th:if="${product.stockQuantity > 0 && !product.isPreorder}"
+                                 class="absolute top-3 left-[-30px] rotate-[-45deg] bg-blue-stock text-white text-[10px] font-bold px-8 py-1 shadow-sm z-10 uppercase tracking-wider">
+                                In Stock
+                            </div>
+                            <span th:if="${product.isPreorder}"
+                                  class="absolute top-2 right-2 bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded-md z-10 uppercase tracking-wider shadow-sm">
+                                Pre-order
+                            </span>
+
+                            <img th:src="${product.mainImageUrl != null ? product.mainImageUrl : 'https://via.placeholder.com/300x400'}"
+                                 alt="Product Image"
+                                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        </div>
+
+                        <div class="p-4 flex flex-col flex-grow justify-between">
+                            <div>
+
+                                <h3 class="font-bold text-gray-800 text-[15px] leading-tight line-clamp-2 mb-2 hover:text-primary transition"
+                                    th:text="${product.name}" title="${product.name}">Tên SP</h3>
+                            </div>
+                            <div class="mt-2">
+                                <span class="text-secondary font-bold text-lg"
+                                      th:text="${#numbers.formatDecimal(product.price, 0, 'COMMA', 0, 'POINT')} + 'đ'">
+                                    1.000.000đ
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div th:if="${products.isEmpty()}" class="flex flex-col items-center justify-center py-16 text-gray-500 bg-white rounded-xl border-2 border-dashed border-gray-200">
+                    <p class="text-lg font-medium">Không tìm thấy sản phẩm nào.</p>
+                </div>
+
+                <div th:if="${products.totalPages > 1}" class="mt-10 flex justify-center items-center space-x-2">
+                    <button th:if="${products.hasPrevious()}"
+                            th:hx-get="@{/products(page=${products.number - 1})}"
+                            hx-include="#filterForm"
+                            hx-target="#product-grid-container"
+                            class="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-primary transition">
+                        &laquo;
+                    </button>
+
+                    <div class="px-4 py-2 font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm">
+                        <span class="text-primary font-bold" th:text="${products.number + 1}">1</span> / <span th:text="${products.totalPages}">5</span>
+                    </div>
+
+                    <button th:if="${products.hasNext()}"
+                            th:hx-get="@{/products(page=${products.number + 1})}"
+                            hx-include="#filterForm"
+                            hx-target="#product-grid-container"
+                            class="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-primary transition">
+                        &raquo;
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Include Footer Fragment -->
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+</body>
+</html>

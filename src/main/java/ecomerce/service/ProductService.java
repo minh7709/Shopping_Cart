@@ -1,98 +1,43 @@
-
 package ecomerce.service;
 
-import ecomerce.dto.ProductRequest;
-import ecomerce.dto.ProductResponse;
+import ecomerce.dto.request.ProductSearchCriteria;
+import ecomerce.dto.response.ProductSummaryResponse;
+import ecomerce.repository.spec.ProductSpecification;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 import ecomerce.entity.Product;
 import ecomerce.repository.ProductRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
+@RequiredArgsConstructor
 @Service
 public class ProductService {
-    @Autowired
-    private ProductRepository productRepository;
+    private final ProductRepository productRepository;
 
-    // select all products
-    public List<ProductResponse> getAllProducts() {
-        return productRepository.findAll().stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
+    @Transactional(readOnly = true)
+    public Page<ProductSummaryResponse> getProducts(ProductSearchCriteria criteria, Pageable pageable) {
+        Specification<Product> spec = ProductSpecification.getProducts(criteria);
+        Page<Product> productPage = productRepository.findAll(spec, pageable);
+        return productPage.map(ProductSummaryResponse::toDTO);
+    }
+    // 1. Lấy sản phẩm HOT (Sắp xếp theo số lượng bán)
+    public Page<ProductSummaryResponse> getHotProducts(int limit) {
+        Pageable pageable = PageRequest.of(0, limit, Sort.by("soldQuantity").descending());
+        return productRepository.findAll(pageable).map(ProductSummaryResponse::toDTO);
     }
 
-    // select product by id
-    public Optional<ProductResponse> getProductById(Long id) {
-        return productRepository.findById(id)
-                .map(this::convertToResponse);
+    // 2. Lấy sản phẩm theo Danh mục (Ví dụ: Goods)
+    public Page<ProductSummaryResponse> getProductsByCategory(Integer categoryId, int limit) {
+        Pageable pageable = PageRequest.of(0, limit, Sort.by("createdAt").descending());
+        return productRepository.findByCategoryId(categoryId, pageable).map(ProductSummaryResponse::toDTO);
     }
 
-    // add new product
-    public ProductResponse addProduct(ProductRequest request) {
-        Product product = convertToEntity(request);
-        Product savedProduct = productRepository.save(product);
-        return convertToResponse(savedProduct);
+    // 3. Lấy sản phẩm Có sẵn (In Stock)
+    public Page<ProductSummaryResponse> getInStockProducts(int limit) {
+        Pageable pageable = PageRequest.of(0, limit, Sort.by("createdAt").descending());
+        return productRepository.findByStockQuantityGreaterThan(0, pageable).map(ProductSummaryResponse::toDTO);
     }
 
-    // update product
-    public ProductResponse updateProduct(Long id, ProductRequest request) {
-        Product existingProduct = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found with id: " + id));
-
-        existingProduct.setName(request.getName());
-        existingProduct.setPrice(request.getPrice());
-        existingProduct.setDescription(request.getDescription());
-        existingProduct.setImageUrl(request.getImageUrl());
-        existingProduct.setStockQuantity(request.getStockQuantity());
-
-        Product savedProduct = productRepository.save(existingProduct);
-        return convertToResponse(savedProduct);
-    }
-
-    // delete product
-    public void deleteProduct(Long id) {
-        productRepository.deleteById(id);
-    }
-
-    // find products by name containing ignore case
-    public List<ProductResponse> findProductsByName(String name) {
-        return productRepository.findByNameContainingIgnoreCase(name).stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
-    }
-
-    // get available products (stock > 0)
-    public List<ProductResponse> getAvailableProducts() {
-        return productRepository.findByStockQuantityGreaterThan(0).stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
-    }
-
-    // Convert Entity to Response DTO
-    private ProductResponse convertToResponse(Product product) {
-        ProductResponse response = new ProductResponse();
-        response.setId(product.getId());
-        response.setName(product.getName());
-        response.setPrice(product.getPrice());
-        response.setDescription(product.getDescription());
-        response.setImageUrl(product.getImageUrl());
-        response.setStockQuantity(product.getStockQuantity());
-        response.setInStock(product.getStockQuantity() != null && product.getStockQuantity() > 0);
-        return response;
-    }
-
-    // Convert Request DTO to Entity
-    private Product convertToEntity(ProductRequest request) {
-        Product product = new Product();
-        product.setName(request.getName());
-        product.setPrice(request.getPrice());
-        product.setDescription(request.getDescription());
-        product.setImageUrl(request.getImageUrl());
-        product.setStockQuantity(request.getStockQuantity());
-        return product;
-    }
 }
-

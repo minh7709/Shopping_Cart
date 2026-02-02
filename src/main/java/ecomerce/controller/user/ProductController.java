@@ -1,46 +1,38 @@
 package ecomerce.controller.user;
 
-import ecomerce.dto.ApiResponse;
-import ecomerce.dto.ProductResponse;
+import ecomerce.dto.request.ProductSearchCriteria;
+import ecomerce.dto.response.ProductSummaryResponse;
 import ecomerce.service.ProductService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import lombok.RequiredArgsConstructor;
 
-import java.util.List;
-
-@RestController
-@RequestMapping("/api/products")
+@Controller
+@RequestMapping("/products")
+@RequiredArgsConstructor
 public class ProductController {
+    private final ProductService productService;
 
-    @Autowired
-    private ProductService productService;
-
-    // Lấy tất cả sản phẩm
     @GetMapping
-    public ApiResponse<List<ProductResponse>> getAllProducts() {
-        List<ProductResponse> products = productService.getAllProducts();
-        return ApiResponse.success("Products retrieved successfully", products);
-    }
+    public String getProducts(
+            @ModelAttribute ProductSearchCriteria criteria,
+            Pageable pageable,
+            Model model,
+            @RequestHeader(value = "HX-Request", required = false) boolean isAjax
+    ) {
+        Page<ProductSummaryResponse> productPage = productService.getProducts(criteria, pageable);
+        model.addAttribute("products", productPage);
 
-    // Lấy sản phẩm theo ID
-    @GetMapping("/{id}")
-    public ApiResponse<ProductResponse> getProductById(@PathVariable Long id) {
-        return productService.getProductById(id)
-                .map(product -> ApiResponse.success("Product retrieved successfully", product))
-                .orElse(ApiResponse.error("Product not found"));
-    }
+        if (isAjax) {
+            // Nếu là AJAX, chỉ trả về đoạn HTML danh sách sản phẩm
+            // Cú pháp: "tên_file_html :: tên_fragment"
+            return "user/products :: productListFragment";
+        }
 
-    // Tìm kiếm sản phẩm theo tên
-    @GetMapping("/search")
-    public ApiResponse<List<ProductResponse>> searchProducts(@RequestParam String name) {
-        List<ProductResponse> products = productService.findProductsByName(name);
-        return ApiResponse.success("Products searched successfully", products);
-    }
-
-    // Lấy sản phẩm còn hàng
-    @GetMapping("/available")
-    public ApiResponse<List<ProductResponse>> getAvailableProducts() {
-        List<ProductResponse> products = productService.getAvailableProducts();
-        return ApiResponse.success("Available products retrieved successfully", products);
+        // Nếu load thường, trả về cả trang web
+        return "user/products";
     }
 }

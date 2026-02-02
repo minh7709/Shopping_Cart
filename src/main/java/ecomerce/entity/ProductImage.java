@@ -2,25 +2,24 @@ package ecomerce.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.Generated;
 
 @Entity
-@Table(name = "cart_items")
+@Table(name = "product_images")
 @Data
-public class CartItem {
+public class ProductImage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Integer id;
 
     @ManyToOne
-    @JoinColumn(name = "cart_id", nullable = false)
-    private Cart cart;
-
-    @ManyToOne
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    @Column(name = "quantity", nullable = false)
-    private Integer quantity;
+    @Column(name = "image_url", nullable = false)
+    private String imageUrl;
 
+    @Column(name = "is_main", nullable = false)
+    private Boolean isMain;
 }
