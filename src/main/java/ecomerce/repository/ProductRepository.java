@@ -1,5 +1,6 @@
 package ecomerce.repository;
 
+import ecomerce.dto.response.ProductResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
@@ -11,4 +12,5 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface ProductRepository extends JpaRepository<Product, Integer>, JpaSpecificationExecutor<Product> {
     Page<Product> findByCategoryId(Integer categoryId, Pageable pageable);
     Page<Product> findByStockQuantityGreaterThan(Integer stockQuantity, Pageable pageable);
+    Product findById(int id);
 }

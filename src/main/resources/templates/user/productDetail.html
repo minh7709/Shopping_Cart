@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${product.name} + ' - Haiku Figure'">Chi tiết sản phẩm</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FCB3B3',
+                        secondary: '#F87171',
+                        'green-theme': '#22c55e',
+                        'green-dark': '#15803d'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .thumbnail-item.active {
+            border-color: #F87171;
+            border-width: 2px;
+        }
+    </style>
+</head>
+<body class="bg-[#F5F5F5] text-gray-800 font-sans">
+
+<div th:replace="~{fragments/header :: header}"></div>
+
+<div class="py-6" style="margin-left: 115px; margin-right: 115px;">
+    <div class="bg-white rounded-lg shadow-sm p-6">
+        <div class="flex flex-col lg:flex-row gap-8">
+
+            <!-- Cột trái: Ảnh sản phẩm -->
+            <div class="flex-shrink-0" style="width: 450px;">
+                <!-- Ảnh chính -->
+                <div class="relative border border-gray-200 rounded-lg overflow-hidden mb-4 bg-white" style="width: 450px; height: 450px;">
+                    <div th:if="${product.isPreorder}"
+                         class="absolute top-0 left-0 bg-green-theme text-white text-xs font-bold px-3 py-1.5 rounded-br-lg z-10 shadow-sm"
+                         style="writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg);">
+                        Pre-order
+                    </div>
+
+                    <img id="mainImage"
+                         th:src="${product.mainImageUrl}"
+                         class="w-full h-full object-contain p-4"
+                         alt="Main Product Image">
+
+                    <!-- Nút điều hướng ảnh -->
+                    <button id="prevBtn" class="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 hover:bg-white rounded-full shadow flex items-center justify-center text-gray-600 hover:text-gray-800 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <button id="nextBtn" class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 hover:bg-white rounded-full shadow flex items-center justify-center text-gray-600 hover:text-gray-800 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+
+                <!-- Thumbnail ảnh - chỉ hiện ảnh từ backend -->
+                <div class="flex gap-2 overflow-x-auto pb-2" id="thumbnailContainer">
+                    <th:block th:if="${product.images != null && !product.images.isEmpty()}" th:each="img, iterStat : ${product.images}">
+                        <div th:class="${iterStat.first} ? 'flex-shrink-0 w-14 h-14 border-2 border-secondary rounded cursor-pointer overflow-hidden thumbnail-item active' : 'flex-shrink-0 w-14 h-14 border border-gray-200 rounded cursor-pointer hover:border-secondary overflow-hidden thumbnail-item'">
+                            <img th:src="${img.imageUrl}" th:alt="${product.name}" class="w-full h-full object-cover">
+                        </div>
+                    </th:block>
+                    <!-- Fallback nếu không có ảnh trong list, hiện mainImageUrl -->
+                    <th:block th:if="${product.images == null || product.images.isEmpty()}">
+                        <div class="flex-shrink-0 w-14 h-14 border-2 border-secondary rounded cursor-pointer overflow-hidden thumbnail-item active">
+                            <img th:src="${product.mainImageUrl}" th:alt="${product.name}" class="w-full h-full object-cover">
+                        </div>
+                    </th:block>
+                </div>
+            </div>
+
+            <!-- Cột giữa: Thông tin sản phẩm -->
+            <div class="flex-1 min-w-0">
+                <h1 class="text-xl font-bold text-gray-800 leading-tight mb-3" th:text="${product.name}">
+                    Tên sản phẩm
+                </h1>
+
+                <!-- Badge trạng thái -->
+                <div class="mb-4">
+                    <span th:if="${product.isPreorder}" class="inline-block bg-green-theme text-white text-xs font-bold px-3 py-1 rounded">Hàng Đặt Trước</span>
+                    <span th:unless="${product.isPreorder}" class="inline-block bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded">Có Sẵn</span>
+                </div>
+
+                <!-- tags -->
+                <div class="text-sm text-gray-600 mb-4 space-y-1">
+                    <p><span class="text-gray-500">Tình trạng:</span>
+                        <span th:if="${product.stockQuantity > 0}" class="text-green-600 font-medium">Còn hàng (<span th:text="${product.stockQuantity}">0</span>)</span>
+                        <span th:unless="${product.stockQuantity > 0}" class="text-red-600 font-medium">Hết hàng</span>
+                    </p>
+                    <p><span class="text-gray-500">Danh mục:</span>
+                        <a th:if="${product.category != null}"
+                           th:href="@{/products(categoryIds=${product.category.id})}"
+                           class="text-blue-600 font-medium hover:underline"
+                           th:text="${product.category.name}">Category</a>
+                        <span th:unless="${product.category != null}" class="text-gray-400">N/A</span>
+                    </p>
+                    <p><span class="text-gray-500">Thương hiệu:</span>
+                        <a th:if="${product.brand != null}"
+                           th:href="@{/products(brandIds=${product.brand.id})}"
+                           class="text-blue-600 font-medium hover:underline"
+                           th:text="${product.brand.name}">Brand</a>
+                        <span th:unless="${product.brand != null}" class="text-gray-400">N/A</span>
+                    </p>
+                    <p><span class="text-gray-500">Series:</span>
+                        <a th:if="${product.series != null}"
+                           th:href="@{/products(seriesIds=${product.series.id})}"
+                           class="text-blue-600 font-medium hover:underline"
+                           th:text="${product.series.name}">Series</a>
+                        <span th:unless="${product.series != null}" class="text-gray-400">N/A</span>
+                    </p>
+                    <p><span class="text-gray-500">Nhân vật:</span>
+                        <a th:if="${product.character != null}"
+                           th:href="@{/products(characterIds=${product.character.id})}"
+                           class="text-blue-600 font-medium hover:underline"
+                           th:text="${product.character.name}">Character</a>
+                        <span th:unless="${product.character != null}" class="text-gray-400">N/A</span>
+                    </p>
+
+                </div>
+
+                <!-- Giá -->
+                <div class="flex items-baseline gap-3 mb-5">
+                    <span class="text-2xl font-bold text-red-600"
+                          th:text="${#numbers.formatDecimal(product.price, 0, 'COMMA', 0, 'POINT')} + 'đ'">
+                        Thương lượng
+                    </span>
+                </div>
+
+                <!-- Form thêm vào giỏ -->
+                <form action="/cart/add" method="post" class="space-y-3">
+                    <input type="hidden" name="productId" th:value="${product.id}">
+
+                    <!-- Số lượng -->
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center border border-gray-300 rounded h-9">
+                            <button type="button" onclick="updateQuantity(-1)" class="w-9 h-full text-gray-600 hover:bg-gray-100 font-bold text-lg">−</button>
+                            <input type="number" id="quantityInput" name="quantity" value="1" min="1" class="w-10 h-full text-center outline-none font-medium text-sm border-x border-gray-300">
+                            <button type="button" onclick="updateQuantity(1)" class="w-9 h-full text-gray-600 hover:bg-gray-100 font-bold text-lg">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Nút thêm vào giỏ -->
+                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold text-sm py-2.5 rounded uppercase transition shadow-md">
+                        THÊM VÀO GIỎ
+                        <span class="block text-[10px] font-normal normal-case opacity-90">Vui Lòng Đọc Kỹ Ngày Phát Hành ↓↓↓</span>
+                    </button>
+                </form>
+
+                <!-- Tags -->
+                <div class="mt-4 flex flex-wrap gap-2 text-xs">
+                    <span class="bg-gray-700 text-white px-3 py-1 rounded">
+                        Phát hành <span th:text="${product.releaseDate != null ? product.releaseDate : 'Chưa xác định'}">2026/05</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Cột phải: Cam kết & Lưu ý -->
+            <div class="flex-shrink-0 space-y-4" style="width: 280px;">
+                <!-- Cam kết bán hàng -->
+                <div class="border border-green-theme rounded-lg overflow-hidden">
+                    <div class="bg-green-theme text-white font-bold px-4 py-2.5 text-sm">
+                        Cam kết bán hàng
+                    </div>
+                    <div class="p-4 bg-white space-y-3 text-sm text-gray-700">
+                        <div class="flex gap-3 items-start">
+                            <svg class="w-5 h-5 text-green-theme flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>Bảo Đảm Giá Đặt Trước</span>
+                        </div>
+                        <div class="flex gap-3 items-start">
+                            <svg class="w-5 h-5 text-green-theme flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>Hàng chính hãng, bảo hành lỗi NSX</span>
+                        </div>
+                        <div class="flex gap-3 items-start">
+                            <svg class="w-5 h-5 text-green-theme flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>FREE SHIPPING toàn quốc đơn hàng trên 400K</span>
+                        </div>
+                        <div class="flex gap-3 items-start">
+                            <svg class="w-5 h-5 text-green-theme flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span class="text-blue-600 hover:underline cursor-pointer">International Shipping now available!</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lưu ý khi mua hàng -->
+                <div class="border border-green-theme rounded-lg overflow-hidden">
+                    <div class="bg-green-theme text-white font-bold px-4 py-2.5 text-sm">
+                        Lưu ý khi mua hàng
+                    </div>
+                    <div class="p-4 bg-white space-y-3 text-sm text-gray-700">
+                        <div class="flex gap-2 items-start">
+                            <svg class="w-4 h-4 text-green-theme flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                            <span>Khách đọc kỹ ngày phát hành (dự kiến) của sản phẩm</span>
+                        </div>
+                        <div class="flex gap-2 items-start">
+                            <svg class="w-4 h-4 text-green-theme flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                            <span>Hàng đặt trước giá có thể thay đổi, khách hãy inbox để xác nhận giá trước khi đặt mua</span>
+                        </div>
+                        <div class="flex gap-2 items-start">
+                            <svg class="w-4 h-4 text-green-theme flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                            <span>Mỗi nguồn hàng có chính sách bảo hành khác nhau, tham khảo <a href="#" class="text-blue-500 underline">tại đây</a></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mô tả chi tiết + Thông tin sản phẩm -->
+    <div class="mt-6 bg-white rounded-lg shadow-sm p-6">
+        <div class="flex flex-col lg:flex-row gap-6">
+            <!-- Mô tả (2/3) -->
+            <div class="w-full lg:w-2/3">
+                <h3 class="text-lg font-bold mb-4 border-l-4 border-secondary pl-3 uppercase">Mô tả chi tiết</h3>
+                <div class="prose max-w-none text-gray-700 leading-relaxed" th:utext="${product.description}">
+                    Mô tả sản phẩm sẽ hiển thị ở đây...
+                </div>
+            </div>
+
+            <!-- Bảng thông tin sản phẩm (1/3) -->
+            <div class="w-full lg:w-1/3">
+                <h3 class="text-lg font-bold mb-4 border-l-4 border-green-theme pl-3 uppercase">Thông tin sản phẩm</h3>
+                <table class="w-full text-sm border border-gray-200">
+                    <tbody>
+                        <tr class="border-b border-gray-200">
+                            <td class="py-2 px-3 bg-gray-50 font-medium text-gray-600">Chất liệu</td>
+                            <td class="py-2 px-3" th:text="${product.material != null ? product.material : 'N/A'}">PVC, ABS</td>
+                        </tr>
+                        <tr class="border-b border-gray-200">
+                            <td class="py-2 px-3 bg-gray-50 font-medium text-gray-600">Tỷ lệ</td>
+                            <td class="py-2 px-3" th:text="${product.scale != null ? product.scale : 'N/A'}">1/7</td>
+                        </tr>
+                        <tr class="border-b border-gray-200">
+                            <td class="py-2 px-3 bg-gray-50 font-medium text-gray-600">Kích thước</td>
+                            <td class="py-2 px-3" th:text="${product.dimensions != null ? product.dimensions : 'N/A'}">H: 250mm</td>
+                        </tr>
+                        <tr class="border-b border-gray-200">
+                            <td class="py-2 px-3 bg-gray-50 font-medium text-gray-600">Cân nặng</td>
+                            <td class="py-2 px-3" th:text="${product.weight != null ? product.weight + ' kg' : 'N/A'}">0.5 kg</td>
+                        </tr>
+                        <tr class="border-b border-gray-200">
+                            <td class="py-2 px-3 bg-gray-50 font-medium text-gray-600">Ngày phát hành</td>
+                            <td class="py-2 px-3" th:text="${product.releaseDate != null ? product.releaseDate : 'Chưa xác định'}">2026/05</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 bg-gray-50 font-medium text-gray-600">Trạng thái</td>
+                            <td class="py-2 px-3">
+                                <span th:if="${product.isPreorder}" class="text-orange-600 font-medium">Pre-order</span>
+                                <span th:unless="${product.isPreorder}" class="text-green-600 font-medium">Có sẵn</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slider sản phẩm cùng Series -->
+    <div th:if="${seriesProducts != null && !seriesProducts.isEmpty()}" class="mt-6 bg-white rounded-lg shadow-sm p-6">
+        <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-200">
+            <h2 class="text-lg font-bold uppercase tracking-wide border-l-4 border-secondary pl-3 text-gray-800">
+                Sản phẩm cùng Series: <span th:text="${seriesName}" class="text-secondary">Series Name</span>
+            </h2>
+            <a th:href="@{/products(seriesIds=${product.series.id})}" class="text-xs text-gray-500 hover:text-secondary transition font-medium">Xem tất cả »</a>
+        </div>
+
+        <div class="relative">
+            <!-- Slider Container -->
+            <div class="overflow-hidden">
+                <div id="seriesSlider" class="flex transition-transform duration-500 ease-out">
+                    <div th:each="item, iterStat : ${seriesProducts}"
+                         class="flex-shrink-0 w-1/5 px-2 group">
+                        <div class="relative aspect-square bg-gray-50 rounded-lg overflow-hidden mb-2">
+                            <div th:if="${item.isPreorder}"
+                                 class="absolute top-2 left-[-25px] -rotate-45 bg-green-500 text-white text-[8px] font-bold w-[80px] text-center py-0.5 shadow-sm z-10">
+                                Pre-order
+                            </div>
+                            <div th:if="${!item.isPreorder && item.inStock}"
+                                 class="absolute top-2 left-[-25px] -rotate-45 bg-blue-500 text-white text-[8px] font-bold w-[80px] text-center py-0.5 shadow-sm z-10">
+                                In Stock
+                            </div>
+                            <a th:href="@{/products/{id}(id=${item.id})}">
+                                <img th:src="${item.mainImageUrl != null ? item.mainImageUrl : 'https://via.placeholder.com/300'}"
+                                     alt="Product"
+                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
+                            </a>
+                        </div>
+                        <h3 class="text-xs font-medium text-gray-700 line-clamp-2 mb-1 group-hover:text-secondary transition leading-tight">
+                            <a th:href="@{/products/{id}(id=${item.id})}" th:text="${item.name}">Tên sản phẩm</a>
+                        </h3>
+                        <span class="text-secondary font-bold text-sm"
+                              th:text="${#numbers.formatDecimal(item.price, 0, 'COMMA', 0, 'POINT')} + 'đ'">
+                            1.000.000đ
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <!-- Navigation Buttons -->
+            <button onclick="slideSeriesProducts(-1)" class="absolute left-0 top-1/3 -translate-y-1/2 -ml-3 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-gray-100 hover:scale-110 active:scale-95 transition-all duration-200 z-10">
+                <svg class="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <button onclick="slideSeriesProducts(1)" class="absolute right-0 top-1/3 -translate-y-1/2 -mr-3 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-gray-100 hover:scale-110 active:scale-95 transition-all duration-200 z-10">
+                <svg class="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+            <!-- Dots Indicator -->
+            <div class="flex justify-center mt-3 gap-1.5" id="seriesDots"></div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<script>
+    // Quản lý gallery ảnh
+    const thumbnails = document.querySelectorAll('.thumbnail-item');
+    const mainImage = document.getElementById('mainImage');
+    let currentIndex = 0;
+
+    // Click thumbnail
+    thumbnails.forEach((item, index) => {
+        item.addEventListener('click', () => {
+            setActiveImage(index);
+        });
+    });
+
+    function setActiveImage(index) {
+        currentIndex = index;
+        const img = thumbnails[index].querySelector('img');
+        if (img) {
+            mainImage.src = img.src;
+        }
+        // Update active class
+        thumbnails.forEach((t, i) => {
+            t.classList.toggle('active', i === index);
+            t.classList.toggle('border-secondary', i === index);
+            t.classList.toggle('border-2', i === index);
+            t.classList.toggle('border-gray-200', i !== index);
+        });
+    }
+
+    // Prev/Next buttons
+    document.getElementById('prevBtn').addEventListener('click', () => {
+        const newIndex = currentIndex > 0 ? currentIndex - 1 : thumbnails.length - 1;
+        setActiveImage(newIndex);
+    });
+
+    document.getElementById('nextBtn').addEventListener('click', () => {
+        const newIndex = currentIndex < thumbnails.length - 1 ? currentIndex + 1 : 0;
+        setActiveImage(newIndex);
+    });
+
+    // Cập nhật số lượng
+    function updateQuantity(change) {
+        const input = document.getElementById('quantityInput');
+        let newValue = parseInt(input.value) + change;
+        if (newValue < 1) newValue = 1;
+        input.value = newValue;
+    }
+
+    // ========== Series Products Slider ==========
+    let seriesCurrentSlide = 0;
+    const seriesItemsPerPage = 5; // Hiển thị 5 sản phẩm mỗi lần
+
+    function slideSeriesProducts(direction) {
+        const slider = document.getElementById('seriesSlider');
+        if (!slider) return;
+
+        const items = slider.children;
+        const totalItems = items.length;
+        const totalPages = Math.ceil(totalItems / seriesItemsPerPage);
+
+        seriesCurrentSlide += direction;
+
+        // Loop around
+        if (seriesCurrentSlide < 0) {
+            seriesCurrentSlide = totalPages - 1;
+        } else if (seriesCurrentSlide >= totalPages) {
+            seriesCurrentSlide = 0;
+        }
+
+        // Tính toán vị trí dịch chuyển (mỗi item chiếm 20% = 1/5)
+        const translateX = -(seriesCurrentSlide * seriesItemsPerPage * 20);
+        slider.style.transform = `translateX(${translateX}%)`;
+
+        updateSeriesDots(totalPages);
+    }
+
+    function updateSeriesDots(totalPages) {
+        const dotsContainer = document.getElementById('seriesDots');
+        if (!dotsContainer) return;
+
+        dotsContainer.innerHTML = '';
+        for (let i = 0; i < totalPages; i++) {
+            const dot = document.createElement('span');
+            dot.className = `w-2 h-2 rounded-full cursor-pointer transition-all ${i === seriesCurrentSlide ? 'bg-secondary w-4' : 'bg-gray-300 hover:bg-gray-400'}`;
+            dot.onclick = () => {
+                seriesCurrentSlide = i;
+                const slider = document.getElementById('seriesSlider');
+                const translateX = -(i * seriesItemsPerPage * 20);
+                slider.style.transform = `translateX(${translateX}%)`;
+                updateSeriesDots(totalPages);
+            };
+            dotsContainer.appendChild(dot);
+        }
+    }
+
+    // Khởi tạo dots cho series slider
+    document.addEventListener('DOMContentLoaded', function() {
+        const slider = document.getElementById('seriesSlider');
+        if (slider) {
+            const totalItems = slider.children.length;
+            const totalPages = Math.ceil(totalItems / seriesItemsPerPage);
+            updateSeriesDots(totalPages);
+        }
+    });
+</script>
+</body>
+</html>

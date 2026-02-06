@@ -1,6 +1,7 @@
 package ecomerce.service;
 
 import ecomerce.dto.request.ProductSearchCriteria;
+import ecomerce.dto.response.ProductResponse;
 import ecomerce.dto.response.ProductSummaryResponse;
 import ecomerce.repository.spec.ProductSpecification;
 import lombok.RequiredArgsConstructor;
@@ -16,28 +17,30 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProductService {
     private final ProductRepository productRepository;
 
+    /**
+     * Lấy danh sách sản phẩm với filter, sort, pagination
+     * Tái sử dụng cho tất cả các trường hợp:
+     * - Hot Products: sort=soldQuantity,desc
+     * - Category Products: categoryIds=[1,2,...]
+     * - In Stock: inStock=true
+     * - Search: keyword=...
+     * - Preorder: isPreorder=true/false
+     */
     @Transactional(readOnly = true)
     public Page<ProductSummaryResponse> getProducts(ProductSearchCriteria criteria, Pageable pageable) {
         Specification<Product> spec = ProductSpecification.getProducts(criteria);
         Page<Product> productPage = productRepository.findAll(spec, pageable);
         return productPage.map(ProductSummaryResponse::toDTO);
     }
-    // 1. Lấy sản phẩm HOT (Sắp xếp theo số lượng bán)
-    public Page<ProductSummaryResponse> getHotProducts(int limit) {
-        Pageable pageable = PageRequest.of(0, limit, Sort.by("soldQuantity").descending());
-        return productRepository.findAll(pageable).map(ProductSummaryResponse::toDTO);
-    }
 
-    // 2. Lấy sản phẩm theo Danh mục (Ví dụ: Goods)
-    public Page<ProductSummaryResponse> getProductsByCategory(Integer categoryId, int limit) {
-        Pageable pageable = PageRequest.of(0, limit, Sort.by("createdAt").descending());
-        return productRepository.findByCategoryId(categoryId, pageable).map(ProductSummaryResponse::toDTO);
+    /**
+     * Lấy chi tiết sản phẩm theo ID
+     */
+    public ProductResponse getProductById(int id) {
+        Product product = productRepository.findById(id);
+        if (product == null) {
+            return null;
+        }
+        return ProductResponse.toDTO(product);
     }
-
-    // 3. Lấy sản phẩm Có sẵn (In Stock)
-    public Page<ProductSummaryResponse> getInStockProducts(int limit) {
-        Pageable pageable = PageRequest.of(0, limit, Sort.by("createdAt").descending());
-        return productRepository.findByStockQuantityGreaterThan(0, pageable).map(ProductSummaryResponse::toDTO);
-    }
-
 }

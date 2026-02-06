@@ -182,12 +182,14 @@ public class ProductSeeder implements CommandLineRunner {
 
         Product savedProduct = productRepository.save(p);
 
-        // Lưu Image
-        ProductImage img = new ProductImage();
-        img.setProduct(savedProduct);
-        img.setImageUrl(imgUrl);
-        img.setIsMain(true);
-        imageRepository.save(img);
+        // Lưu 3 Images cho mỗi product
+        for (int i = 0; i < 3; i++) {
+            ProductImage img = new ProductImage();
+            img.setProduct(savedProduct);
+            img.setImageUrl(imgUrl);
+            img.setIsMain(i == 0); // Chỉ ảnh đầu tiên là main
+            imageRepository.save(img);
+        }
     }
 
     // --- DTO Classes để hứng JSON từ API ---

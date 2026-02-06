@@ -250,10 +250,7 @@
 
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center pb-4 border-b gap-4">
             <div>
-                <h1 class="text-3xl font-bold text-gray-800">Sản phẩm có sẵn</h1>
-                <p class="text-gray-500 text-sm mt-1" th:if="${!products.isEmpty()}">
-                    Hiển thị <span th:text="${products.numberOfElements}"></span> / <span th:text="${products.totalElements}"></span> sản phẩm
-                </p>
+                <h1 class="text-3xl font-bold text-gray-800">Sản phẩm</h1>
             </div>
 
             <div class="flex items-center flex-wrap gap-2">
@@ -296,6 +293,19 @@
 
             <div th:fragment="productListFragment" class="flex flex-col h-full animate-fade-in">
 
+                <!-- Thông tin hiển thị sản phẩm -->
+                <div th:if="${!products.isEmpty()}" class="flex justify-between items-center mb-4 py-2">
+                    <p class="text-gray-600 text-sm">
+                        Hiển thị
+                        <span class="font-semibold text-gray-800" th:text="${products.number * products.size + 1}">1</span>
+                        -
+                        <span class="font-semibold text-gray-800" th:text="${products.number * products.size + products.numberOfElements}">20</span>
+                        trên
+                        <span class="font-semibold text-primary" th:text="${products.totalElements}">150</span>
+                        sản phẩm
+                    </p>
+                </div>
+
                 <div class="htmx-indicator flex justify-center items-center m-2">
                     <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -316,17 +326,19 @@
                                   class="absolute top-2 right-2 bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded-md z-10 uppercase tracking-wider shadow-sm">
                                 Pre-order
                             </span>
+                            <a th:href="@{/products/{id}(id=${product.id})}">
+                                <img th:src="${product.mainImageUrl != null ? product.mainImageUrl : 'https://via.placeholder.com/300x400'}"
+                                     alt="${product.name}"
+                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            </a>
 
-                            <img th:src="${product.mainImageUrl != null ? product.mainImageUrl : 'https://via.placeholder.com/300x400'}"
-                                 alt="Product Image"
-                                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         </div>
 
                         <div class="p-4 flex flex-col flex-grow justify-between">
                             <div>
 
-                                <h3 class="font-bold text-gray-800 text-[15px] leading-tight line-clamp-2 mb-2 hover:text-primary transition"
-                                    th:text="${product.name}" title="${product.name}">Tên SP</h3>
+                                <a class="font-bold text-gray-800 text-[15px] leading-tight line-clamp-2 mb-2 hover:text-primary transition"
+                                   th:href="@{/products/{id}(id=${product.id})}" th:text="${product.name}" title="${product.name}">Tên SP</a>
                             </div>
                             <div class="mt-2">
                                 <span class="text-secondary font-bold text-lg"
@@ -347,6 +359,7 @@
                             th:hx-get="@{/products(page=${products.number - 1})}"
                             hx-include="#filterForm"
                             hx-target="#product-grid-container"
+                            hx-push-url="true"
                             class="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-primary transition">
                         &laquo;
                     </button>
@@ -359,6 +372,7 @@
                             th:hx-get="@{/products(page=${products.number + 1})}"
                             hx-include="#filterForm"
                             hx-target="#product-grid-container"
+                            hx-push-url="true"
                             class="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-primary transition">
                         &raquo;
                     </button>

@@ -7,7 +7,7 @@
 <body>
 
 <footer th:fragment="footer" class="bg-primary text-white p-8 mt-12">
-    <div class="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8" style="margin-left: 115px; margin-right: 115px;">
         <div>
             <h4 class="font-bold text-lg mb-4">Haiku Figure Store</h4>
             <p class="text-sm font-medium leading-relaxed">Chuyên cung cấp figure chính hãng từ Nhật Bản. Uy tín, chất lượng, đam mê.</p>
@@ -21,9 +21,9 @@
         </div>
         <div>
             <h4 class="font-bold mb-4">Đăng ký nhận tin</h4>
-            <div class="flex">
-                <input type="text" placeholder="Email của bạn..." class="p-2 rounded-l-lg text-gray-800 outline-none w-full focus:ring-2 focus:ring-white">
-                <button class="bg-secondary px-4 rounded-r-lg font-bold hover:bg-red-600 transition">Gửi</button>
+            <div class="flex max-w-sm">
+                <input type="text" placeholder="Email của bạn..." class="flex-1 min-w-0 p-2 rounded-l-lg text-gray-800 outline-none focus:ring-2 focus:ring-white">
+                <button class="bg-secondary px-4 rounded-r-lg font-bold hover:bg-red-600 transition flex-shrink-0">Gửi</button>
             </div>
         </div>
     </div>
